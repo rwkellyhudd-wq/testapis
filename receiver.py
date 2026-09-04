@@ -3,8 +3,12 @@ import os
 
 app = Quart(__name__)
 
+# Son kaydedilen token'ı hatırla
+last_token = None
+
 @app.route('/token', methods=['POST'])
 async def receive_token():
+    global last_token
     try:
         data = await request.json
         token = data.get('token')
@@ -12,10 +16,15 @@ async def receive_token():
         if not token:
             return jsonify({'status': 'error', 'message': 'No token provided'}), 400
         
-        # ESKİ TOKEN'I SİL, YENİSİNİ YAZ!
-        with open('tokens.txt', 'w') as f:  # 'w' = üzerine yaz
+        # Eğer token öncekiyle aynıysa KAYDETME!
+        if token == last_token:
+            return jsonify({'status': 'skipped', 'message': 'Duplicate token, not saved'})
+        
+        # Yeni token, kaydet ve güncelle
+        with open('tokens.txt', 'w') as f:
             f.write(f"{token}\n")
         
+        last_token = token  # Son token'ı güncelle
         return jsonify({'status': 'success', 'token': token[:30] + '...'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
@@ -28,7 +37,6 @@ async def get_tokens():
         tokens = [t for t in tokens if t.strip()]
         
         if tokens:
-            # SADECE SON TOKEN'I GÖSTER
             return jsonify({'token': tokens[-1]})
         else:
             return jsonify({'token': None, 'message': 'No tokens yet'})
@@ -39,6 +47,7 @@ async def get_tokens():
 
 @app.route('/', methods=['GET'])
 async def home():
+    global last_token
     try:
         with open('tokens.txt', 'r') as f:
             tokens = f.read().split('\n')
@@ -48,13 +57,15 @@ async def home():
             'service': 'Token Receiver',
             'status': 'running',
             'last_token': tokens[-1] if tokens else None,
-            'total_tokens_stored': len(tokens)  # Her zaman 1 olacak
+            'last_saved_token': last_token,
+            'total_tokens_stored': len(tokens)
         })
     except FileNotFoundError:
         return jsonify({
             'service': 'Token Receiver',
             'status': 'running',
             'last_token': None,
+            'last_saved_token': last_token,
             'total_tokens_stored': 0
         })
     except:
