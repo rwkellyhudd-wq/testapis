@@ -1,11 +1,14 @@
+# Render'da çalışacak kod (Köprü) - Görünür mod zorunlu
 from quart import Quart, jsonify, request
 import os
 import aiohttp
 
 app = Quart(__name__)
 
-# VDS IP adresin
+# ====================================================
+# VDS IP ADRESİN
 VDS_SOLVER_URL = "http://163.5.53.36:5072/api/solve"
+# ====================================================
 
 last_token = None
 
@@ -20,6 +23,9 @@ async def api_solve():
 
     if not args.get('url') or not args.get('sitekey') or not args.get('siteurl'):
         return jsonify({"errorId": 1, "error": "url, sitekey ve siteurl zorunludur"}), 400
+
+    # VDS'de tarayıcının GÖRÜNMESİNİ zorunlu kılıyoruz
+    args['visible'] = 'true'
 
     try:
         async with aiohttp.ClientSession() as sess:
